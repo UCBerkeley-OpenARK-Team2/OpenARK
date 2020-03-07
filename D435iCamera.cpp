@@ -266,16 +266,17 @@ namespace ark {
             if (frame.images_[3].empty()) frame.images_[3] = cv::Mat(cv::Size(width,height), CV_8UC3);
             std::memcpy( frame.images_[3].data, color.get_data(),3 * width * height);
 
-			//FILTER OUT ALL POINTS CLOSER THAN min_dist AND FARTHER THAN max_dist
-			int min_dist = 200;
-			int max_dist = 6000;
-			for (int i = 0; i < width; i++) {
-				for (int k = 0; k < height; k++) {
-					if (frame.images_[4].at<uint16_t>(k, i) < min_dist || frame.images_[4].at<uint16_t>(k, i) > max_dist) { 
-						frame.images_[4].at<uint16_t>(k, i) = 0;
-					}
-				}
-			}
+
+			////FILTER OUT ALL POINTS CLOSER THAN min_dist
+			//int min_dist = 200;
+			//for (int i = 0; i < width; i++) {
+			//	for (int k = 0; k < height; k++) {
+			//		if (frame.images_[4].at<uint16_t>(k, i) < min_dist) { 
+			//			frame.images_[4].at<uint16_t>(k, i) = 0;
+			//		}
+			//	}
+			//}
+
 
         } catch (std::runtime_error e) {
             // Try reconnecting

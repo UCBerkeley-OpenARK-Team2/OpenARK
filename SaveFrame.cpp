@@ -82,6 +82,22 @@ namespace ark {
 		}
 	}
 
+	void SaveFrame::saveAugmentations(std::map<std::string, Eigen::Vector3d> object_map) {
+		if (object_map.size() == 0) {
+			return;
+		}
+
+		std::ofstream file("augmentations.txt");
+		if (file.is_open())
+		{
+			for (const auto obj : object_map) {
+				file << obj.first << " " << obj.second(0) << " " << obj.second(1) << " " << obj.second(2) << '\n';
+			}
+		}
+		file.close();
+
+	}
+
     RGBDFrame SaveFrame::frameLoad(int frameId){
         std::cout<<"frameLoad start = "<< frameId <<std::endl;
 

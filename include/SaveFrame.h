@@ -22,6 +22,7 @@ namespace ark{
 
 		void SaveFrame::frameWrite(cv::Mat imRGB, cv::Mat depth, Eigen::Matrix4d traj, int frameId);
 		void SaveFrame::updateTransforms(std::map<int, Eigen::Matrix4d> keyframemap);
+		void SaveFrame::saveAugmentations(std::map<std::string, Eigen::Vector3d> object_map);
 
         ark::RGBDFrame SaveFrame::frameLoad(int frameId);
 

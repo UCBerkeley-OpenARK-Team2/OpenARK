@@ -6,12 +6,11 @@
 #include "glfwManager.h"
 #include "Util.h"
 #include "SaveFrame.h"
+#include "MeshUtil.h"
 #include "Types.h"
 #include "Open3D/Integration/ScalableTSDFVolume.h"
 #include "Open3D/Integration/MovingTSDFVolume.h"
 #include "Open3D/Visualization/Utility/DrawGeometry.h"
-#include "Open3D/IO/ClassIO/TriangleMeshIO.h"
-#include "Open3D/IO/ClassIO/ImageIO.h"
 #include <map>
 
 using namespace ark;
@@ -49,7 +48,7 @@ std::shared_ptr<open3d::geometry::RGBDImage> generateRGBDImageFromCV(cv::Mat col
 		}
 	}
 
-	auto rgbd_image = open3d::geometry::RGBDImage::CreateFromColorAndDepth(*color_im, *depth_im, 1000.0, 10.0, false);
+	auto rgbd_image = open3d::geometry::RGBDImage::CreateFromColorAndDepth(*color_im, *depth_im, 1000.0, 2.0, false);
 	return rgbd_image;
 }
 
@@ -157,7 +156,7 @@ int main(int argc, char **argv)
 
 	slam.AddKeyFrameAvailableHandler(saveFrameHandler, "saveframe");
 
-	float voxel_size = 0.07;
+	float voxel_size = 0.015;
 
 	open3d::integration::MovingTSDFVolume * tsdf_volume = new open3d::integration::MovingTSDFVolume(voxel_size, voxel_size * 5, open3d::integration::TSDFVolumeColorType::RGB8, 5);
 
@@ -186,7 +185,7 @@ int main(int argc, char **argv)
 
 	slam.AddFrameAvailableHandler(tsdfFrameHandler, "tsdfframe");
 
-	MyGUI::MeshWindow mesh_win("Mesh Viewer", 1200, 1200);
+	MyGUI::MeshWindow mesh_win("Mesh Viewer", 1000, 1000);
 	MyGUI::Mesh mesh_obj("mesh");
 
 	mesh_win.add_object(&mesh_obj);
@@ -195,11 +194,8 @@ int main(int argc, char **argv)
 		Eigen::Matrix4d>> vis_mesh;
 
 	FrameAvailableHandler meshHandler([&tsdf_volume, &frame_counter, &do_integration, &vis_mesh, &mesh_obj](MultiCameraFrame::Ptr frame) {
-		/*if (!do_integration || frame_counter % 30 != 1) {
-			return;
-		}*/
 
-		if (frame_counter % 30 != 1)
+		if (!do_integration || frame_counter % 30 != 1)
 			return;
 			
 		vis_mesh = tsdf_volume->GetTriangleMeshes();
@@ -245,9 +241,71 @@ int main(int argc, char **argv)
 
 	slam.AddFrameAvailableHandler(meshHandler, "meshupdate");
 
-	FrameAvailableHandler viewHandler([&mesh_obj, &tsdf_volume, &mesh_win, &frame_counter](MultiCameraFrame::Ptr frame) {
+	FrameAvailableHandler handler([&mesh_win, &camera](MultiCameraFrame::Ptr frame) {
 		Eigen::Affine3d transform(frame->T_WS());
-		mesh_obj.set_transform(transform.inverse());
+		if (mesh_win.clicked()) {
+
+			cv::Mat depth_mat;
+
+			frame->getImage(depth_mat, 4);
+			int u = depth_mat.rows / 2;
+			int v = depth_mat.cols / 2;
+			float depth = depth_mat.at<uint16_t>(u, v) / 1000.0;
+
+			if (depth == 0) {
+				std::cout << "look at an object to anchor an augmentation" << std::endl;
+				return;
+			}
+
+
+			//set_pos anchors the position of the cube
+
+			std::vector<float> intrinsics = camera.getColorIntrinsics();
+
+			Eigen::Matrix3d intr_mat = (Eigen::Matrix3d() << intrinsics[0], 0, intrinsics[2], 0, intrinsics[1], intrinsics[3], 0, 0, 1).finished();
+
+			//cout << "intr" << intr_mat << endl;
+
+			intr_mat = intr_mat.inverse().eval();
+
+			//cout << "intr inv" << intr_mat << endl;
+
+			Eigen::Vector3d world_pos(v, u, 1.0);
+			world_pos = intr_mat * world_pos;
+
+			//cout << world_pos << endl;
+			//cout << "depth " << depth << endl;
+
+			world_pos *= depth;
+
+			//cout << world_pos << endl;
+
+			world_pos = transform.rotation() * world_pos;
+
+			//cout << world_pos << endl;
+
+			world_pos = world_pos + transform.translation();
+
+			//cout << "world pos " << world_pos << endl;
+
+			Eigen::Matrix4d obj_pos;
+			obj_pos.block<3, 3>(0, 0) = transform.rotation();
+			obj_pos.block<3, 1>(0, 3) = world_pos;
+
+
+			std::string cube_name = std::string("Augmentation" + std::to_string(frame->frameId_));
+			MyGUI::Augmentation* obj = new MyGUI::Augmentation(cube_name, 0.3, 0.3, 0.3, obj_pos);
+
+
+			std::cout << "Adding cube " << cube_name << std::endl;
+			mesh_win.add_object(obj); //NOTE: this is bad, should change objects to shared_ptr
+		}
+	});
+	slam.AddFrameAvailableHandler(handler, "place augment");
+
+	FrameAvailableHandler viewHandler([&mesh_win](MultiCameraFrame::Ptr frame) {
+		Eigen::Affine3d transform(frame->T_WS());
+		mesh_win.set_camera(transform.inverse());
 	});
 	
 	slam.AddFrameAvailableHandler(viewHandler, "viewhandler");
@@ -322,8 +380,9 @@ int main(int argc, char **argv)
 				std::cout << "----INTEGRATION DISABLED----" << endl;
 			}
 		}
-		
-		if (k == 'q' || k == 'Q' || k == 27) break; // 27 is ESC
+		else if (k == 'q' || k == 'Q' || k == 27) {
+			break; // 27 is ESC
+		}
 
 	}
 
@@ -342,17 +401,16 @@ int main(int argc, char **argv)
 
 	saveFrame->updateTransforms(keyframemap);
 
+	cout << "getting augmentations" << endl;
+
+	saveFrame->saveAugmentations(mesh_win.get_augmentations());
+
 	cout << "getting mesh" << endl;
 
-	//make sure to add these back later |
-
 	std::shared_ptr<open3d::geometry::TriangleMesh> write_mesh = tsdf_volume->ExtractTotalTriangleMesh();
+	write_mesh->ComputeVertexNormals();
 
-	//const std::vector<std::shared_ptr<const open3d::geometry::Geometry>> mesh_vec = { mesh };
-
-	//open3d::visualization::DrawGeometries(mesh_vec);
-
-	open3d::io::WriteTriangleMeshToPLY("mesh.ply", *write_mesh, false, false, true, true, false, false);
+	write_ply_file(write_mesh, "mesh.ply");
 
 	printf("\nTerminate...\n");
 	// Clean up

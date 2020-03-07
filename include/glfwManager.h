@@ -206,17 +206,6 @@ public:
 
 };
 
-class MeshWindow : public ObjectWindow {
-public:
-	MeshWindow(std::string name, int resX, int resY) :
-		ObjectWindow(name, resX, resY) {};
-	//bool display();
-	void set_camera(Eigen::Affine3d t) {
-		transform = t;
-	}
-private:
-	Eigen::Affine3d transform;
-};
 
 class Object{
 public:
@@ -330,6 +319,27 @@ public:
 	}
 };
 
+class Augmentation : public Object {
+public:
+	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+	float hWidth, hHeight, hLength;
+	float posx, posy, posz;
+	void draw_obj();
+
+	Augmentation(std::string name, float width, float height, float length, Eigen::Matrix4d p) : 
+	Object(name), hWidth(width/2), hHeight(height/2), hLength(length/2), posx(p(0, 3)), posy(p(1, 3)), posz(p(2, 3)){
+		cout << "adding cube at position: " << p << endl;
+
+		cout << posx << " " << posy << " " << posz << endl;
+
+	}
+
+	Eigen::Vector3d get_pos() {
+		Eigen::Vector3d v(posx, posy, posz);
+		return v;
+	}
+};
+
 class Mesh : public Object {
 public:
 
@@ -424,6 +434,62 @@ public:
 protected:
 	std::mutex meshLock_;
 
+};
+
+class MeshWindow : public ObjectWindow {
+public:
+	MeshWindow(std::string name, int resX, int resY) :
+		ObjectWindow(name, resX, resY) {};
+	//bool display();
+	void set_camera(Eigen::Affine3d t) {
+		transform = t;
+
+		for (const auto obj : objects) {
+			obj.second->set_transform(t);
+		}
+
+	}
+	void MeshWindow::keyboard_control()
+	{
+		if (glfwGetKey(win_ptr, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			glfwSetWindowShouldClose(win_ptr, GL_TRUE);
+		if (glfwGetMouseButton(win_ptr, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+			clicked_ = true;
+		}
+	}
+
+	bool MeshWindow::clicked() {
+		bool clicked = clicked_;
+		clicked_ = false;
+		return clicked;
+	}
+
+	std::map<std::string, Eigen::Vector3d> MeshWindow::get_augmentations() {
+
+		std::map<std::string, Eigen::Vector3d> object_map;
+
+		if (objects.size() == 0) {
+			cout << "no augmentations to save" << endl;
+			return object_map;
+		}
+
+
+		for (const auto obj : objects) {
+			//augmentation
+			if (obj.first.find("Augmentation") == 0) {
+				object_map.insert(std::pair<std::string, Eigen::Vector3d>(obj.first, ((Augmentation*)(obj.second))->get_pos()));
+			}
+		}
+
+		return object_map;
+
+	}
+
+
+
+private:
+	Eigen::Affine3d transform;
+	bool clicked_ = false;
 };
 
 

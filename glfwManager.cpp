@@ -563,6 +563,88 @@ void Path::draw_obj()
     glEnable(GL_LIGHTING);
 }
 
+void Augmentation::draw_obj(){
+
+
+	Eigen::Matrix4d scene_mat;
+	glGetDoublev(GL_MODELVIEW_MATRIX, scene_mat.data());
+	scene_mat = scene_mat*pose.matrix().inverse();
+	glLoadMatrixd(scene_mat.data());
+
+	glPushMatrix();
+
+
+	Eigen::AngleAxis<double> R(pose.rotation());
+	Eigen::Translation3d T(pose.translation());
+
+
+	glRotated(180, 0, 1, 0);
+	glRotated(180, 0, 0, 1);
+
+
+	glTranslated(T.x(), T.y(), T.z());
+	glRotated(R.angle() * 180 / 3.14159, R.axis().x(), R.axis().y(), R.axis().z());
+
+
+	glDisable(GL_LIGHTING);
+	glBegin(GL_QUADS);
+
+    // top
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(-hWidth + posx, hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, hHeight + posy, -hLength + posz);
+    glVertex3f(-hWidth + posx, hHeight + posy, -hLength + posz);
+ 
+    // front
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glNormal3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(hWidth + posx, -hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, hHeight + posy, hLength + posz);
+    glVertex3f(-hWidth + posx, hHeight + posy, hLength + posz);
+    glVertex3f(-hWidth + posx, -hHeight + posy, hLength + posz);
+ 
+    // right
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glNormal3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(hWidth + posx, hHeight + posy, -hLength + posz);
+    glVertex3f(hWidth + posx, hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, -hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, -hHeight + posy, -hLength + posz);
+ 
+    // left
+    glColor3f(0.0f, 0.0f, 0.5f);
+    glNormal3f(-1.0f, 0.0f, 0.0f);
+    glVertex3f(-hWidth + posx, -hHeight + posy, hLength + posz);
+    glVertex3f(-hWidth + posx, hHeight + posy, hLength + posz);
+    glVertex3f(-hWidth + posx, hHeight + posy, -hLength + posz);
+    glVertex3f(-hWidth + posx, -hHeight + posy, -hLength + posz);
+
+    // bottom
+    glColor3f(0.5f, 0.0f, 0.0f);
+    glNormal3f(0.0f, -1.0f, 0.0f);
+    glVertex3f(-hWidth + posx, -hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, -hHeight + posy, hLength + posz);
+    glVertex3f(hWidth + posx, -hHeight + posy, -hLength + posz);
+    glVertex3f(-hWidth + posx, -hHeight + posy, -hLength + posz);
+ 
+    // back
+    glColor3f(0.0f, 0.5f, 0.0f);
+    glNormal3f(0.0f, 0.0f, -1.0f);
+    glVertex3f(hWidth + posx, hHeight + posy, -hLength + posz);
+    glVertex3f(hWidth + posx, -hHeight + posy, -hLength + posz);
+    glVertex3f(-hWidth + posx, -hHeight + posy, -hLength + posz);
+    glVertex3f(-hWidth + posx, hHeight + posy, -hLength + posz);
+ 
+    glEnd();
+
+    glEnable(GL_LIGHTING);
+
+	glPopMatrix();
+
+}
+
 void Mesh::draw_obj()
 {
 	std::lock_guard<std::mutex> guard(meshLock_);

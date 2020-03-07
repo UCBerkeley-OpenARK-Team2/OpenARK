@@ -198,7 +198,6 @@ class SparseMap {
 
   }
 
-
   std::unique_ptr<DBoW2::TemplatedVocabulary<TDescriptor, F> >vocab_;
   //std::unique_ptr<DBoW2::TemplatedDatabase<TDescriptor, F> > db_;
   std::unique_ptr<DLoopDetector::TemplatedLoopDetector<TDescriptor, F> >detector_;

@@ -20,6 +20,7 @@ set( DEMO_NAME "OpenARK_hand_demo" )
 set( AVATAR_DEMO_NAME "OpenARK_avatar_demo")
 set( SLAM_DEMO_NAME "OpenARK_SLAM_demo")
 set( 3DRECON_DATA_NAME "3dRecon_Data_Recording")
+set ( SNAP_ON_NAME "Snap_On_demo")
 set( DATA_RECORDING_NAME "OpenARK_data_recording")
 set( TEST_NAME "OpenARK_test" )
 set( UNITY_PLUGIN_NAME "UnityPlugin" )
@@ -270,6 +271,8 @@ set(
   glfwManager.cpp
   OkvisSLAMSystem.cpp
   SaveFrame.cpp
+  MeshUtil.cpp
+  ICPEngine.cpp
 )
 
 set(
@@ -306,6 +309,8 @@ set(
   ${INCLUDE_DIR}/CorrespondenceRansac.h
   ${INCLUDE_DIR}/UKF.h
   ${INCLUDE_DIR}/SaveFrame.h
+  ${INCLUDE_DIR}/MeshUtil.h
+  ${INCLUDE_DIR}/ICPEngine.h
   stdafx.h
 )
 
@@ -471,6 +476,16 @@ add_executable( ${3DRECON_DATA_NAME} 3DReconDemo.cpp )
         target_link_libraries( ${3DRECON_DATA_NAME} ${DEPENDENCIES} ${LIB_NAME} )
     else()
         target_link_libraries( ${3DRECON_DATA_NAME} ${DEPENDENCIES} ${LIB_NAME} GLU GL glut )
+    endif ( MSVC )
+
+add_executable( ${SNAP_ON_NAME} SnapOnDemo.cpp )
+    target_include_directories( ${SNAP_ON_NAME} PRIVATE ${INCLUDE_DIR} )
+    set_target_properties( ${SNAP_ON_NAME} PROPERTIES OUTPUT_NAME ${SNAP_ON_NAME} )
+    set_target_properties( ${SNAP_ON_NAME} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS} )
+    if ( MSVC )
+        target_link_libraries( ${SNAP_ON_NAME} ${DEPENDENCIES} ${LIB_NAME} )
+    else()
+        target_link_libraries( ${SNAP_ON_NAME} ${DEPENDENCIES} ${LIB_NAME} GLU GL glut )
     endif ( MSVC )
 
 if( ${BUILD_DATA_RECORDING} )
