@@ -17,12 +17,12 @@ namespace ark {
 
 	class ICPEngine {
 	public:
-		ICPEngine(open3d::geometry::TriangleMesh model, int model_target_vertices = 10000, 
+		ICPEngine(open3d::geometry::TriangleMesh model, Eigen::Matrix3d intr, int model_target_vertices = 10000,
 			int frame_downsample = 90, Eigen::Matrix4d init = Eigen::Matrix4d::Identity(), 
 			float rmse_threshold = 0.05, float fitness_threshold = 0.8, float depth_threshold = 3.0,
 			float max_correspondence_dist = 0.1);
 		void Start();
-		void PushFrame(MultiCameraFrame::Ptr frame, Eigen::Matrix3d intr_mat);
+		void PushFrame(MultiCameraFrame::Ptr frame);
 		//Eigen::Matrix4d GetPose();
 		void AddPoseAvailableHandler(PoseAvailableHandler handler, std::string handlerName);
 		void ShutDown();
@@ -40,14 +40,18 @@ namespace ark {
 		float fitness_termination_;
 
 	private:
+		void DisplayInitialization();
 		void MainLoop();
 		bool GetLatestTarget(open3d::geometry::PointCloud &target);
 		open3d::geometry::PointCloud model_pcld;
 		open3d::geometry::PointCloud frame_pcld;
+
+		Eigen::Matrix3d intr_inv_;
 		
 		std::map<std::string, PoseAvailableHandler> callbacks;
 
 		bool kill;
+		bool initialized;
 		Eigen::Matrix4d transform;
 
 		std::thread icp;

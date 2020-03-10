@@ -62,8 +62,6 @@ int main(int argc, char **argv)
 	}
 	file.close();
 
-
-
 	//start up gui thing
 	if (!MyGUI::Manager::init())
 	{
@@ -71,20 +69,24 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	std::vector<float> intr = camera.getColorIntrinsics();
-	MyGUI::ARCameraWindow ar_win("AR Viewer", 640 * 1.5, 480 * 1.5, GL_RGB, GL_UNSIGNED_BYTE, intr[0], intr[1], intr[2], intr[3], 0.01, 100);
-
-	Eigen::Matrix4d temp = (Eigen::Matrix4d() << 0.999779, -0.0141999, 0.015498, -2.5046e-15, 
-		-0.0141994, 0.0873891, 0.996073, 3.63987e-14,
-		-0.0154985, -0.996073, 0.0871682, -1.81829e-14,
+	Eigen::Matrix4d temp = (Eigen::Matrix4d() << 0.999779, -0.0141999, 0.015498, 0,
+		-0.0141994, 0.0873891, 0.996073, 0,
+		-0.0154985, -0.996073, 0.0871682, 0,
 		0, 0, 0, 1).finished();
 
 	Eigen::Affine3d current_t = Eigen::Affine3d::Identity();
 	current_t.matrix() = temp;
 
+	std::vector<float> intrinsics = camera.getColorIntrinsics();
+
+	Eigen::Matrix3d intr_mat = (Eigen::Matrix3d() << intrinsics[0], 0, intrinsics[2], 0, intrinsics[1], intrinsics[3], 0, 0, 1).finished();
+
 	cout << temp << endl;
 
-	ICPEngine * icp = new ICPEngine(model, 10000, 90, temp);
+
+	MyGUI::ARCameraWindow ar_win("AR Viewer", 640 * 1.5, 480 * 1.5, GL_RGB, GL_UNSIGNED_BYTE, intrinsics[0], intrinsics[1], intrinsics[2], intrinsics[3], 0.01, 100);
+
+	ICPEngine * icp = new ICPEngine(model, intr_mat, 10000, 90, temp);
 
 	PoseAvailableHandler poseHandler([&current_t](Eigen::Matrix4d transform) {
 
@@ -97,13 +99,6 @@ int main(int argc, char **argv)
 	icp->AddPoseAvailableHandler(poseHandler, "pose'd");
 	icp->Start();
 
-	std::vector<float> intrinsics = camera.getColorIntrinsics();
-
-	Eigen::Matrix3d intr_mat = (Eigen::Matrix3d() << intrinsics[0], 0, intrinsics[2], 0, intrinsics[1], intrinsics[3], 0, 0, 1).finished();
-	intr_mat = intr_mat.inverse().eval();
-
-	auto time = std::chrono::system_clock::now();
-	
 	while (MyGUI::Manager::running()) {
 
 		//Update the display
@@ -112,7 +107,7 @@ int main(int argc, char **argv)
 		//Get current camera frame
 		MultiCameraFrame::Ptr frame(new MultiCameraFrame);
 		camera.update(*frame);
-		icp->PushFrame(frame, intr_mat);
+		icp->PushFrame(frame);
 
 		cv::Mat imRGB;
 		frame->getImage(imRGB, 3);
