@@ -158,11 +158,11 @@ ENDIF(Ceres_FOUND)
 include_directories(${CERES_INCLUDE_DIRS})
 
 # require SuiteSparse
-#find_package( SuiteSparse QUIET )
-#IF(SuiteSparse_FOUND)
-#    MESSAGE(STATUS "Found SuiteSparse: ${SuiteSparse_INCLUDE_DIRS} ${SuiteSparse_LIBRARIES}")
-#ENDIF(SuiteSparse_FOUND)
-#include_directories(${SuiteSparse_INCLUDE_DIRS})
+find_package( SuiteSparse QUIET )
+IF(SuiteSparse_FOUND)
+    MESSAGE(STATUS "Found SuiteSparse: ${SuiteSparse_INCLUDE_DIRS} ${SuiteSparse_LIBRARIES}")
+ENDIF(SuiteSparse_FOUND)
+include_directories(${SuiteSparse_INCLUDE_DIRS})
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
