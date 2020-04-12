@@ -124,14 +124,14 @@ IF( DBoW2_FOUND )
 ENDIF( DBoW2_FOUND )
 
 # require DLoopDetector
-#find_package( DLoopDetector REQUIRED )
-#IF( DLoopDetector_FOUND )
-#    MESSAGE( STATUS "Found DLoopDetector: ${DLoopDetector_INCLUDE_DIRS} ${DLoopDetector_LIBRARIES}" )
-#   include_directories(${DLoopDetector_INCLUDE_DIRS})
-#ENDIF( DLoopDetector_FOUND )
+find_package( DLoopDetector REQUIRED )
+IF( DLoopDetector_FOUND )
+    MESSAGE( STATUS "Found DLoopDetector: ${DLoopDetector_INCLUDE_DIRS} ${DLoopDetector_LIBRARIES}" )
+   include_directories(${DLoopDetector_INCLUDE_DIRS})
+ENDIF( DLoopDetector_FOUND )
 
-SET(DLoopDetector_INCLUDE_DIR "C:/Program Files/DLoopDetector/include/DLoopDetector")
-include_directories(${DLoopDetector_INCLUDE_DIR})
+#SET(DLoopDetector_INCLUDE_DIR "C:/Program Files/DLoopDetector/include/DLoopDetector")
+#include_directories(${DLoopDetector_INCLUDE_DIR})
 
 # require Okvis
 find_package( okvis REQUIRED )
