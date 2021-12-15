@@ -354,16 +354,12 @@ public:
 
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-	std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>> mesh_vertices;
-    std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>> mesh_colors;
-    std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>>> mesh_triangles;
-    std::shared_ptr<std::vector<Eigen::Matrix4d>> mesh_transforms;
-    std::shared_ptr<std::vector<int>> mesh_enabled;
+	std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *> mesh_vertices;
+    std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *> mesh_colors;
+    std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>> *> mesh_triangles;
+    std::shared_ptr<std::vector<Eigen::Matrix4d> *> mesh_transforms;
+    std::shared_ptr<std::vector<int> *> mesh_enabled;
 
-	// //threadsafe?
-	// int current_active_map;
-	// int archive_index;
-	// std::set<int> enabled_meshes;
 
 	ark::SegmentedMesh * mesh_;
 

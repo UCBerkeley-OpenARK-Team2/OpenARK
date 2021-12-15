@@ -59,10 +59,10 @@ namespace ark {
 		void StartNewBlock();
 		void SetActiveMapIndex(int map_index);
 
-		std::tuple<std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>>, 
-			std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>>,
-			std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>>>, 
-			std::shared_ptr<std::vector<Eigen::Matrix4d>>, std::shared_ptr<std::vector<int>>> GetOutputVectors();
+		std::tuple<std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *>, 
+			std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *>,
+			std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>> *>, 
+			std::shared_ptr<std::vector<Eigen::Matrix4d> *>, std::shared_ptr<std::vector<int> *>> GetOutputVectors();
 
 		void AddRenderMutex(std::mutex* render_mutex, std::string render_mutex_key);
 		void RemoveRenderMutex(std::string render_mutex_key);
@@ -94,6 +94,7 @@ namespace ark {
 		void readConfig(std::string& recon_config);
 		void UpdateActiveVolume(Eigen::Matrix4d extrinsic);
 		void CombineMeshes(std::shared_ptr<open3d::geometry::TriangleMesh>& output_mesh, std::shared_ptr<open3d::geometry::TriangleMesh> mesh_to_combine);
+		void SwapActiveBuffer();
 		void UpdateOutputVectors();
 
 
@@ -126,16 +127,25 @@ namespace ark {
 		double max_depth_;
 		bool do_integration_;
 
-		std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>> mesh_vertices;
-		std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>> mesh_colors;
-		std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>>> mesh_triangles;
-		std::shared_ptr<std::vector<Eigen::Matrix4d>> mesh_transforms;
-		std::shared_ptr<std::vector<int>> mesh_enabled;
+		std::vector<std::vector<Eigen::Vector3d>> mesh_vertices_buffers[2];
+		std::vector<std::vector<Eigen::Vector3d>> mesh_colors_buffers[2];
+		std::vector<std::vector<Eigen::Vector3i>> mesh_triangles_buffers[2];
+		std::vector<Eigen::Matrix4d> mesh_transforms_buffers[2];
+		std::vector<int> mesh_enabled_buffers[2];
+
+		std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *> mesh_vertices_ptr;
+		std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *> mesh_colors_ptr;
+		std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>> *> mesh_triangles_ptr;
+		std::shared_ptr<std::vector<Eigen::Matrix4d> *> mesh_transforms_ptr;
+		std::shared_ptr<std::vector<int> *> mesh_enabled_ptr;
+
+		int active_buffer;
 
 		std::unordered_map<std::string, std::mutex *> render_mutexes;
 
 	protected:
 		std::mutex keyFrameLock;
 		std::mutex meshLock;
+		std::mutex updateOutputVectorsLock;
 	};
 }

@@ -104,17 +104,13 @@ namespace ark {
 				color_type_);
 		do_integration_ = true;
 
-		std::vector<std::vector<Eigen::Vector3d>> mesh_vertices_vec;
-		std::vector<std::vector<Eigen::Vector3d>> mesh_colors_vec;
-		std::vector<std::vector<Eigen::Vector3i>> mesh_triangles_vec;
-		std::vector<Eigen::Matrix4d> mesh_transforms_vec;
-		std::vector<int> mesh_enabled_vec;
+		this->mesh_vertices_ptr = std::make_shared<std::vector<std::vector<Eigen::Vector3d>> *>(&(this->mesh_vertices_buffers[0]));
+		this->mesh_colors_ptr = std::make_shared<std::vector<std::vector<Eigen::Vector3d>> *>(&(this->mesh_colors_buffers[0]));
+		this->mesh_triangles_ptr = std::make_shared<std::vector<std::vector<Eigen::Vector3i>> *>(&(this->mesh_triangles_buffers[0]));
+		this->mesh_transforms_ptr = std::make_shared<std::vector<Eigen::Matrix4d> *>(&(this->mesh_transforms_buffers[0]));
+		this->mesh_enabled_ptr = std::make_shared<std::vector<int> *>(&(this->mesh_enabled_buffers[0]));
 
-		this->mesh_vertices = std::make_shared<std::vector<std::vector<Eigen::Vector3d>>>(mesh_vertices_vec);
-		this->mesh_colors = std::make_shared<std::vector<std::vector<Eigen::Vector3d>>>(mesh_colors_vec);
-		this->mesh_triangles = std::make_shared<std::vector<std::vector<Eigen::Vector3i>>>(mesh_triangles_vec);
-		this->mesh_transforms = std::make_shared<std::vector<Eigen::Matrix4d>>(mesh_transforms_vec);
-		this->mesh_enabled = std::make_shared<std::vector<int>>(mesh_enabled_vec);
+		this->active_buffer = 0;
 
 	}
 
@@ -267,35 +263,42 @@ namespace ark {
 		}
 
 		start_new_block = false;
+		{
+			std::lock_guard<std::mutex> guard(keyFrameLock);
 
-		std::lock_guard<std::mutex> guard(keyFrameLock);
+			auto completed_mesh = std::make_shared<MeshUnit>();
 
-		printf("EXITED BLOCK, NEW BLOCK\n");
-
-		auto completed_mesh = std::make_shared<MeshUnit>();
-
-		auto mesh = active_volume->ExtractTriangleMesh();
-		completed_mesh->mesh = mesh;
-		completed_mesh->keyframe = active_volume_keyframe;
-		completed_mesh->block_loc = current_block;
-		completed_mesh->mesh_map_index = active_volume_map_index;
-		completed_meshes.push_back(completed_mesh);
+			auto mesh = active_volume->ExtractTriangleMesh();
+			completed_mesh->mesh = mesh;
+			completed_mesh->keyframe = active_volume_keyframe;
+			completed_mesh->block_loc = current_block;
+			completed_mesh->mesh_map_index = active_volume_map_index;
+			completed_meshes.push_back(completed_mesh);
 
 
-		active_volume = new open3d::integration::ScalableTSDFVolume(voxel_length_, sdf_trunc_, color_type_);
-		active_volume_keyframe = latest_keyframe;
-		active_volume_map_index = active_map_index;
+			active_volume = new open3d::integration::ScalableTSDFVolume(voxel_length_, sdf_trunc_, color_type_);
+			active_volume_keyframe = latest_keyframe;
+			active_volume_map_index = active_map_index;
 
-		current_block = block_loc;
+			current_block = block_loc;
 
-		UpdateOutputVectors();
+			UpdateOutputVectors();
+		}
 	}
 
-	std::tuple<std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>>, 
-			std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>>>,
-			std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>>>, 
-			std::shared_ptr<std::vector<Eigen::Matrix4d>>, std::shared_ptr<std::vector<int>>> SegmentedMesh::GetOutputVectors() {
-		return std::make_tuple(mesh_vertices, mesh_colors, mesh_triangles, mesh_transforms, mesh_enabled);
+	std::tuple<std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *>, 
+			std::shared_ptr<std::vector<std::vector<Eigen::Vector3d>> *>,
+			std::shared_ptr<std::vector<std::vector<Eigen::Vector3i>> *>, 
+			std::shared_ptr<std::vector<Eigen::Matrix4d> *>, std::shared_ptr<std::vector<int> *>> SegmentedMesh::GetOutputVectors() {
+
+
+		auto mesh_vertices_ptr = std::make_shared<std::vector<std::vector<Eigen::Vector3d>> *>(&(this->mesh_vertices_buffers[this->active_buffer]));
+		auto mesh_colors_ptr = std::make_shared<std::vector<std::vector<Eigen::Vector3d>> *>(&(this->mesh_colors_buffers[this->active_buffer]));
+		auto mesh_triangles_ptr = std::make_shared<std::vector<std::vector<Eigen::Vector3i>> *>(&(this->mesh_triangles_buffers[this->active_buffer]));
+		auto mesh_transforms_ptr = std::make_shared<std::vector<Eigen::Matrix4d> *>(&(this->mesh_transforms_buffers[this->active_buffer]));
+		auto mesh_enabled_ptr = std::make_shared<std::vector<int> *>(&(this->mesh_enabled_buffers[this->active_buffer]));
+
+		return std::make_tuple(mesh_vertices_ptr, mesh_colors_ptr, mesh_triangles_ptr, mesh_transforms_ptr, mesh_enabled_ptr);
 	}
 
 	//combines 2 meshes, places in mesh 1
@@ -448,12 +451,43 @@ namespace ark {
 		}
 	}
 
-
-	void SegmentedMesh::UpdateOutputVectors() {
-
+	void SegmentedMesh::SwapActiveBuffer() {
 		for (auto render_mutex : render_mutexes) {
 			std::lock_guard<std::mutex> guard(*(render_mutex.second));
 		}
+
+		int new_active_buffer = 1 - this->active_buffer;
+
+		std::cout << "switching new_active_buffer" << new_active_buffer << std::endl;
+
+		std::cout << "help me! " << this->mesh_vertices_buffers[new_active_buffer].size() << std::endl;
+
+		*this->mesh_vertices_ptr = &this->mesh_vertices_buffers[new_active_buffer];
+		*this->mesh_colors_ptr = &this->mesh_colors_buffers[new_active_buffer];
+		*this->mesh_triangles_ptr = &this->mesh_triangles_buffers[new_active_buffer];
+		*this->mesh_transforms_ptr = &this->mesh_transforms_buffers[new_active_buffer];
+		*this->mesh_enabled_ptr = &this->mesh_enabled_buffers[new_active_buffer];
+
+		std::cout << "ill help you! " << (*this->mesh_vertices_ptr)->size() << std::endl;
+
+		this->active_buffer = new_active_buffer; 
+	}
+
+
+	void SegmentedMesh::UpdateOutputVectors() {
+		
+		//lock for synchronization
+		std::lock_guard<std::mutex> guard(this->updateOutputVectorsLock);
+
+		//first perform update on update_buffer (non-active buffer)
+
+		int update_buffer = 1 - this->active_buffer;
+
+		auto mesh_vertices = &(this->mesh_vertices_buffers[update_buffer]);
+		auto mesh_colors = &(this->mesh_colors_buffers[update_buffer]);
+		auto mesh_triangles = &(this->mesh_triangles_buffers[update_buffer]);
+		auto mesh_transforms = &(this->mesh_transforms_buffers[update_buffer]);
+		auto mesh_enabled = &(this->mesh_enabled_buffers[update_buffer]);
 
 		if (blocking_) {
 
@@ -528,6 +562,50 @@ namespace ark {
 			mesh_transforms->push_back(Eigen::Matrix4d::Identity());
 			mesh_enabled->push_back(1);
 		}
+
+		std::cout << "inside segmented mesh tests" << std::endl;
+
+
+		std::cout << "inside segmented mesh, just updated mesh_vertices size " << mesh_vertices->size() << std::endl;
+
+		std::cout << "inside segmented mesh, mesh_vertices size " << (*this->mesh_vertices_ptr)->size() << std::endl;
+
+		//then swap active buffer
+		this->SwapActiveBuffer();
+
+		std::cout << "inside segmented mesh, after swap mesh_vertices size " << (*this->mesh_vertices_ptr)->size() << std::endl;
+
+		//finally, update non-active buffer to match 
+		update_buffer = 1 - this->active_buffer;
+
+		auto mesh_vertices_to_update = &(this->mesh_vertices_buffers[update_buffer]);
+		auto mesh_colors_to_update = &(this->mesh_colors_buffers[update_buffer]);
+		auto mesh_triangles_to_update = &(this->mesh_triangles_buffers[update_buffer]);
+		auto mesh_transforms_to_update = &(this->mesh_transforms_buffers[update_buffer]);
+		auto mesh_enabled_to_update = &(this->mesh_enabled_buffers[update_buffer]);
+
+		auto mesh_vertices_updated = &(this->mesh_vertices_buffers[this->active_buffer]);
+		auto mesh_colors_updated = &(this->mesh_colors_buffers[this->active_buffer]);
+		auto mesh_triangles_updated = &(this->mesh_triangles_buffers[this->active_buffer]);
+		auto mesh_transforms_updated = &(this->mesh_transforms_buffers[this->active_buffer]);
+		auto mesh_enabled_updated = &(this->mesh_enabled_buffers[this->active_buffer]);
+
+		if (mesh_vertices_to_update->size() > 0) {
+			mesh_vertices_to_update->pop_back();
+			mesh_colors_to_update->pop_back();
+			mesh_triangles_to_update->pop_back();
+			mesh_transforms_to_update->pop_back();
+			mesh_enabled_to_update->clear();
+		}
+
+		for (int i = mesh_vertices_to_update->size(); i < mesh_vertices_updated->size(); i++) {
+			mesh_vertices_to_update->push_back((*mesh_vertices_updated)[i]);
+			mesh_colors_to_update->push_back((*mesh_colors_updated)[i]);
+			mesh_triangles_to_update->push_back((*mesh_triangles_updated)[i]);
+			mesh_transforms_to_update->push_back((*mesh_transforms_updated)[i]);
+		}
+
+		mesh_enabled_to_update = mesh_enabled_updated;
 	}
 
 	void SegmentedMesh::WriteMeshes() {
